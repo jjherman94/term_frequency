@@ -227,7 +227,7 @@ def create_histogram():
     plt.bar(y_pos, freq_values, align='center', alpha=0.5)
     plt.ylabel('Avg Frequency')
     plt.title('Frequency Histogram')
-    plt.savefig('histogram.png')
+    plt.savefig('results/histogram.png')
     plt.close()
     logger.debug("End function")
 
@@ -244,17 +244,17 @@ def create_heatmap(euc_sim_matrix, cos_sim_matrix, jac_sim_matrix):
 
     ax = sns.heatmap(euc_sim_matrix, cmap="hot_r")
     ax.set_title("Euclidean Similarities")
-    plt.savefig('euclidean_heatmap.png')
+    plt.savefig('results/euclidean_heatmap.png')
     plt.close()
 
     ax = sns.heatmap(cos_sim_matrix, cmap="hot_r")
     ax.set_title("Cosine Similarities")
-    plt.savefig('cosine_heatmap.png')
+    plt.savefig('results/cosine_heatmap.png')
     plt.close()
 
     ax = sns.heatmap(jac_sim_matrix, cmap="hot_r")
     ax.set_title("Generalized Jaccard Similarities")
-    plt.savefig('jaccard_heatmap.png')
+    plt.savefig('results/jaccard_heatmap.png')
     plt.close()
     logger.debug("End function")
 
@@ -284,7 +284,7 @@ def perform_linear_regression(euc_list, cos_list, jac_list):
     plt.xlabel('Euclidean')
     plt.ylabel('Cosine')
     plt.title('Euclidean vs Cosine')
-    plt.savefig('euc_cos_regression.png')
+    plt.savefig('results/euc_cos_regression.png')
     plt.close()
 
     # euc vs jaccard
@@ -301,7 +301,7 @@ def perform_linear_regression(euc_list, cos_list, jac_list):
     plt.xlabel('Jaccard')
     plt.ylabel('Euclidean')
     plt.title('Jaccard vs Euclidean')
-    plt.savefig('euc_jac_regression.png')
+    plt.savefig('results/euc_jac_regression.png')
     plt.close()
 
     # cos vs jaccard
@@ -319,7 +319,7 @@ def perform_linear_regression(euc_list, cos_list, jac_list):
     plt.xlabel('Cosine')
     plt.ylabel('Jaccard')
     plt.title('Cosine vs Jaccard')
-    plt.savefig('jac_cos_regression.png')
+    plt.savefig('results/jac_cos_regression.png')
     plt.close()
     logger.debug("End function")
 
@@ -367,7 +367,7 @@ def get_standard_deviations(term_freq_matrix, num_articles, num_features):
     plt.xlabel("Number of Features")
     plt.ylabel("Standard Deviation of Similarity Scores")
     plt.legend()
-    plt.savefig('similarity_std.png')
+    plt.savefig('results/similarity_std.png')
     plt.close()
     logger.debug("End function")
 
@@ -564,7 +564,7 @@ if __name__ == '__main__':
     get_standard_deviations(tfs, num_doc, num_terms)
 
     if True:
-        with open('names.csv', 'w', newline='') as csvfile:
+        with open('results/names.csv', 'w', newline='') as csvfile:
             fieldnames = ['article', *features]
             writer = csv.DictWriter(csvfile, restval=0, fieldnames=fieldnames)
 
