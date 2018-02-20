@@ -5,7 +5,6 @@ Homework 1
 """
 # !/usr/bin/env python3
 
-import csv
 import itertools
 import logging
 import os
@@ -14,19 +13,22 @@ import string
 import sys
 from collections import Counter
 
-import matplotlib
-
 # Needed to run on certain computer but not all, not sure on reason
-matplotlib.use('Agg')
+# import matplotlib
+# matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import nltk
 import numpy
-from scipy.sparse.csr import csr_matrix
 import seaborn as sns
 from nltk.stem.porter import PorterStemmer
+from scipy.sparse.csr import csr_matrix
 from scipy.stats import linregress
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics import make_scorer
 from sklearn.metrics.pairwise import pairwise_distances
+from sklearn.model_selection import StratifiedKFold, cross_validate
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.tree import DecisionTreeClassifier
 
 contractions = {
     "ain't":        "am not",
@@ -212,16 +214,21 @@ def delete_row_csr(mat, index):
     mat._shape = (mat._shape[0] - 1, mat._shape[1])
 
 
-def create_histogram():
+def create_histogram(term_freq_matrix):
+    """
+    Creates the histogram
+
+    :param csr_matrix term_freq_matrix: the term frequence matrix
+    """
     logger.debug("Begin function")
     # Create histogram
     avg_freq = []
-    for feature in range(len(features)):
-        avg_freq.append((features[feature],
-                         tfs.getcol(feature).sum() / num_doc))
+    for feature in range(term_freq_matrix.shape[1]):
+        avg_freq.append(term_freq_matrix.getcol(feature).sum() /
+                        term_freq_matrix.shape[0])
 
-    avg_freq.sort(key=lambda tup: tup[1], reverse=True)
-    y_pos = numpy.arange(len(features))
+    avg_freq.sort(reverse=True)
+    y_pos = numpy.arange(term_freq_matrix.shape[1])
     freq_values = [freq[1] for freq in avg_freq]
 
     plt.bar(y_pos, freq_values, align='center', alpha=0.5)
@@ -438,6 +445,25 @@ def get_similarity_lists(euc_sim_matrix, cos_sim_matrix, jac_sim_matrix,
     return euc_list, cos_list, jac_list
 
 
+def get_article_accuracy(y_true, y_pred, label):
+    """
+    Returns the accuracy of the specified label
+
+    :param list y_true:
+    :param list y_pred:
+    :param str label:
+    :return:
+    """
+    correct = 0
+    total = 0
+    for true_label, pred_label in zip(y_true, y_pred):
+        if true_label == label:
+            if true_label == pred_label:
+                correct += 1
+            total += 1
+    return correct / total
+
+
 def setup_logger(logger_name):
     """
     Sets up the logger to be used for output messages
@@ -450,7 +476,7 @@ def setup_logger(logger_name):
     # create file handler which logs even debug messages
     full_handler = logging.StreamHandler(sys.stdout)
     full_handler.setLevel(logging.DEBUG)
-    file_handler = logging.FileHandler('hw1.log')
+    file_handler = logging.FileHandler('term_frequency.log')
     file_handler.setLevel(logging.DEBUG)
 
     # create console handler with a higher log level
@@ -477,7 +503,7 @@ def setup_logger(logger_name):
     return new_logger
 
 
-logger = setup_logger('homework1')
+logger = setup_logger('term_frequency')
 
 if __name__ == '__main__':
     nltk.download('punkt')
@@ -493,7 +519,7 @@ if __name__ == '__main__':
                      'WD', 'WQ', 'WPRO', 'WPRO$'}
 
     contractions_re = re.compile('(%s)' % '|'.join(contractions.keys()))
-    path = 'testing/alt.atheism'
+    path = 'testing'  # /alt.atheism'
     token_dict = {}
 
     for subdir, dirs, files in os.walk(path):
@@ -508,72 +534,105 @@ if __name__ == '__main__':
             token_dict[file_path] = article_text
 
     logger.debug('Finished reading files')
-    tfidf = TfidfVectorizer(tokenizer=tokenize, stop_words='english',
-                            min_df=0.01, max_df=.99, max_features=100)
-    tfs = csr_matrix(tfidf.fit_transform(token_dict.values()))
+
+    tfidf_feat_sel = TfidfVectorizer(tokenizer=tokenize, stop_words='english',
+                                     min_df=0.01, max_df=.99, max_features=100)
+    tfs_feat_sel = csr_matrix(tfidf_feat_sel.fit_transform(token_dict.values()))
+    labels_feat_sel = [re.split(r'/|\\', s)[-2]
+                       for s in list(token_dict.keys())]
+
+    tfidf_no_feat_sel = TfidfVectorizer(tokenizer=tokenize,
+                                        stop_words='english')
+    tfs_no_feat_sel = csr_matrix(
+            tfidf_no_feat_sel.fit_transform(token_dict.values()))
+    labels_no_feat_sel = [re.split(r'/|\\', s)[-2]
+                          for s in list(token_dict.keys())]
     logger.debug('Finished creating term frequency')
 
-    logger.debug(tfs.shape)
-    num_doc = tfs.shape[0]
-    num_terms = tfs.shape[1]
+    logger.debug("TFS Feature Selection Shape: Documents: {} Features: {}"
+                 .format(*tfs_feat_sel.shape))
+    logger.debug("TFS Without Feature Selection Shape: Documents: {} "
+                 "Features: {}".format(*tfs_no_feat_sel.shape))
 
-    features = tfidf.get_feature_names()
-
-    logger.info(features)
     counts = Counter()
     # Remove rows with mostly zeros
     to_remove = []
-    for doc in range(num_doc):
-        article = list(token_dict.keys())[doc]
-        row = tfs.getrow(doc)
+    for doc in range(tfs_feat_sel.shape[0]):
+        row = tfs_feat_sel.getrow(doc)
         counts[row.nnz] += 1
         if row.nnz < 20:
             to_remove.append(doc)
 
-    logger.debug(counts)
     to_remove.reverse()
     for doc in to_remove:
-        delete_row_csr(tfs, doc)
-        token_dict.pop(list(token_dict.keys())[doc])
+        delete_row_csr(tfs_feat_sel, doc)
+        del labels_feat_sel[doc]
 
-    logger.debug(tfs.shape)
-    num_doc = tfs.shape[0]
-    num_terms = tfs.shape[1]
+    counts = Counter()
+    # Remove rows with mostly zeros
+    to_remove = []
+    for doc in range(tfs_no_feat_sel.shape[0]):
+        row = tfs_no_feat_sel.getrow(doc)
+        counts[row.nnz] += 1
+        if row.nnz < 20:
+            to_remove.append(doc)
 
+    to_remove.reverse()
+    for doc in to_remove:
+        delete_row_csr(tfs_no_feat_sel, doc)
+        del labels_no_feat_sel[doc]
 
-    create_histogram()
+    logger.debug("TFS Feature Selection Shape: Documents: {} Features: {}"
+                 .format(*tfs_feat_sel.shape))
+    logger.debug("TFS Without Feature Selection Shape: Documents: {} "
+                 "Features: {}".format(*tfs_no_feat_sel.shape))
 
-    # Calculate similarities
-    logger.debug('Starting Calc Similarities')
-    euclidean_similarities, cosine_similarities, gen_jaccard_similarities = (
-        get_similarities(tfs, num_terms)
-    )
-    logger.debug('Finished Calc Similarities')
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    k_neighbors = KNeighborsClassifier(n_neighbors=4)
+    decision_tree = DecisionTreeClassifier(random_state=42)
 
-    create_heatmap(euclidean_similarities, cosine_similarities,
-                   gen_jaccard_similarities)
+    scorers = {
+        **{
+            'article_accuracy_{}'.format(l):
+                make_scorer(get_article_accuracy, label=l)
+            for l in set(labels_feat_sel)
+        },
+        **{
+            s: s for s in
+            ['accuracy', 'f1_micro', 'precision_micro', 'recall_micro']
+        }
+    }
+    logger.info("With feature selection")
+    scores_tree = dict(cross_validate(decision_tree, tfs_feat_sel,
+                                      labels_feat_sel, cv=cv, n_jobs=-1,
+                                      return_train_score=False,
+                                      scoring=scorers))
 
-    euc_sim_lists, cos_sim_lists, jac_sim_lists = get_similarity_lists(
-            euclidean_similarities, cosine_similarities,
-            gen_jaccard_similarities, num_doc)
+    scores_neighbors = dict(cross_validate(k_neighbors, tfs_feat_sel,
+                                           labels_feat_sel, cv=cv, n_jobs=-1,
+                                           return_train_score=False,
+                                           scoring=scorers))
+    logger.info('Decision Tree Classifier'
+                + ''.join(['\n{}: {}'.format(k, v)
+                           for k, v in scores_tree.items()]))
+    logger.info('Nearest Neighbors Classifier'
+                + ''.join(['\n{}: {}'.format(k, v)
+                           for k, v in scores_neighbors.items()]))
 
-    perform_linear_regression(euc_sim_lists, cos_sim_lists, jac_sim_lists)
+    logger.info("Without feature selection")
+    scores_tree2 = cross_validate(decision_tree, tfs_no_feat_sel,
+                                  labels_no_feat_sel, cv=cv, n_jobs=-1,
+                                  return_train_score=False,
+                                  scoring=scorers)
 
-    rank_articles(euc_sim_lists, cos_sim_lists, jac_sim_lists)
+    scores_neighbors2 = cross_validate(k_neighbors, tfs_no_feat_sel,
+                                       labels_no_feat_sel, cv=cv, n_jobs=-1,
+                                       return_train_score=False,
+                                       scoring=scorers)
 
-    get_standard_deviations(tfs, num_doc, num_terms)
-
-    if True:
-        with open('results/names.csv', 'w', newline='') as csvfile:
-            fieldnames = ['article', *features]
-            writer = csv.DictWriter(csvfile, restval=0, fieldnames=fieldnames)
-
-            writer.writeheader()
-            for doc in range(num_doc):
-                article = list(token_dict.keys())[doc]
-                row = tfs.getrow(doc)
-                writer.writerow({
-                    'article': article,
-                    **{features[row.indices[i]]: row.data[i]
-                       for i in range(row.nnz)}
-                })
+    logger.info('Decision Tree Classifier'
+                + ''.join(['\n{}: {}'.format(k, v)
+                           for k, v in scores_tree2.items()]))
+    logger.info('Nearest Neighbors Classifier'
+                + ''.join(['\n{}: {}'.format(k, v)
+                           for k, v in scores_neighbors2.items()]))
