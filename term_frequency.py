@@ -1,13 +1,14 @@
-"""
-Joshua Herman
-CS 6001
-Homework 1
-"""
 # !/usr/bin/env python3
+"""
+    Joshua Herman
+    CS 6001
+    Homework 2
+"""
 
 import itertools
 import logging
 import os
+import pickle
 import re
 import string
 import sys
@@ -23,6 +24,7 @@ import seaborn as sns
 from nltk.stem.porter import PorterStemmer
 from scipy.sparse.csr import csr_matrix
 from scipy.stats import linregress
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics import make_scorer
 from sklearn.metrics.pairwise import pairwise_distances
@@ -173,7 +175,7 @@ def tokenize(text):
     tokens = nltk.word_tokenize(text)
     tagged = nltk.tag.pos_tag(tokens)
     clean_tagged = [token_tagged for token_tagged in tagged
-                    if token_tagged[1] not in unwanted_tags]
+                    if token_tagged[1] not in UNWANTED_TAGS]
     tokens = nltk.tag.untag(clean_tagged)
     stems = stem_tokens(tokens)
     stems = [stem for stem in stems if stem.isalpha() and len(stem) > 1]
@@ -201,6 +203,8 @@ def delete_row_csr(mat, index):
     -equivalent-for-sparse-matrices
     """
     if not isinstance(mat, csr_matrix):
+        logger.error(ValueError("works only for CSR format"
+                                " use .tocsr() first"))
         raise ValueError("works only for CSR format -- use .tocsr() first")
     n = mat.indptr[index + 1] - mat.indptr[index]
     if n > 0:
@@ -214,9 +218,9 @@ def delete_row_csr(mat, index):
     mat._shape = (mat._shape[0] - 1, mat._shape[1])
 
 
-def create_histogram(term_freq_matrix):
+def create_term_freq_histogram(term_freq_matrix):
     """
-    Creates the histogram
+    Creates the term frequency histogram
 
     :param csr_matrix term_freq_matrix: the term frequence matrix
     """
@@ -239,9 +243,9 @@ def create_histogram(term_freq_matrix):
     logger.debug("End function")
 
 
-def create_heatmap(euc_sim_matrix, cos_sim_matrix, jac_sim_matrix):
+def create_similarities_heatmap(euc_sim_matrix, cos_sim_matrix, jac_sim_matrix):
     """
-    Creates the heatmap
+    Creates the heatmap of similarities
 
     :param numpy.ndarray euc_sim_matrix: pairwise similarity matrix
     :param numpy.ndarray cos_sim_matrix: pairwise similarity matrix
@@ -379,7 +383,15 @@ def get_standard_deviations(term_freq_matrix, num_articles, num_features):
     logger.debug("End function")
 
 
-def rank_articles(euc_list, cos_list, jac_list):
+def rank_articles(euc_list, cos_list, jac_list, token_dict):
+    """
+    Ranks the articles
+
+    :param euc_list:
+    :param cos_list:
+    :param jac_list:
+    :param token_dict:
+    """
     logger.debug("Begin function")
     # Rank Articles
     euc_list.sort(key=lambda tup: tup[1], reverse=True)
@@ -449,19 +461,218 @@ def get_article_accuracy(y_true, y_pred, label):
     """
     Returns the accuracy of the specified label
 
-    :param list y_true:
-    :param list y_pred:
-    :param str label:
-    :return:
+    :param list y_true: the true values
+    :param list y_pred: the predicted values
+    :param str label: the labels to get the accuracy of
+
+    :return: the accuracy of the prediction
+    :rtype: float
     """
     correct = 0
     total = 0
     for true_label, pred_label in zip(y_true, y_pred):
-        if true_label == label:
+        if true_label == label or label == 'all':
             if true_label == pred_label:
                 correct += 1
             total += 1
     return correct / total
+
+
+def compare_k_value(term_freq_matrix, labels):
+    """
+    Evaluates how the K impacts the overall accuracy and f-measure of
+    kNN on the dataset and plots histograms
+
+    :param csr_matrix term_freq_matrix: the term frequence matrix
+    :param numpy.ndarray labels: the list of labels pertaining to the
+        term_freq_matrix
+
+    :return: the best k value
+    :rtype: int
+    """
+    logger.debug("Begin function")
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+    scorers = ['accuracy', 'f1_micro']
+    scores = []
+    for k in range(1, 20):
+        logger.debug("Testing k value: {}".format(k))
+        k_neighbors = KNeighborsClassifier(n_neighbors=k, weights='distance')
+        score = cross_validate(k_neighbors, term_freq_matrix, labels,
+                               cv=cv, n_jobs=-1, return_train_score=False,
+                               scoring=scorers)
+        logger.info('Nearest Neighbors Classifier: k: {}'.format(k)
+                    + ''.join(['\n{}: {}'.format(k, v)
+                               for k, v in score.items()]))
+        scores.append(score)
+
+    avg_acc_k = [numpy.average(score['test_accuracy']) for score in scores]
+    avg_f_k = [numpy.average(score['test_f1_micro']) for score in scores]
+    create_k_histogram(avg_acc_k, avg_f_k)
+    accuracies = [(k + 1, avg_acc_k[k]) for k in range(len(avg_acc_k))]
+    accuracies.sort(key=lambda x: x[1], reverse=True)
+    logger.debug("End function")
+    return accuracies[0][0]
+
+
+def create_k_histogram(avg_accuracy, avg_f_value):
+    """
+    Creates the histograms for comparing k values based on f measure and
+    accuracy
+
+    :param list avg_accuracy: the list of average accuracies as floats
+    :param list avg_f_value: the list of average f measures as floats
+    """
+    logger.debug("Begin function")
+    # Create histogram
+    accuracies = [(k + 1, avg_accuracy[k]) for k in range(len(avg_accuracy))]
+    f_values = [(k + 1, avg_f_value[k]) for k in range(len(avg_f_value))]
+    accuracies.sort(key=lambda x: x[1], reverse=True)
+    f_values.sort(key=lambda x: x[1], reverse=True)
+
+    x_pos = numpy.arange(len(accuracies))
+    plt.bar(x_pos, [a[1] for a in accuracies], align='center', alpha=0.5)
+    plt.xticks(x_pos, [a[0] for a in accuracies])
+    plt.ylabel('Avg Accuracy')
+    plt.xlabel('K Value')
+    plt.title('K Value Accuracy Comparison Histogram')
+    plt.savefig('results/k_comp_acc_histogram.png')
+    plt.close()
+
+    x_pos = numpy.arange(len(f_values))
+    plt.bar(x_pos, [f[1] for f in f_values], align='center', alpha=0.5)
+    plt.xticks(x_pos, [f[0] for f in f_values])
+    plt.ylabel('Avg F Measure')
+    plt.xlabel('K Value')
+    plt.title('K Value F Measure Comparison Histogram')
+    plt.savefig('results/k_comp_fmeasure_histogram.png')
+    plt.close()
+    logger.debug("End function")
+
+
+def get_term_frequency(path, feature_selection=True, read_pickle=False,
+                       write_pickle=False):
+    """
+    Returns the term frequency matrix and the associated article labels
+
+    :param str path: the path to the articles
+    :param bool feature_selection: whether or not to use feature selection
+    :param bool read_pickle: whether or not to read from a pickle file
+    :param bool write_pickle: whether or not to write to a pickle file
+
+    :return: the term frequency matrix and the associated article labels
+    :rtype: (csr_matrix, numpy.ndarray)
+    """
+    logger.debug("Begin function")
+    pickle_file_name = 'pickles/{}/term_freq-with{}_feat_select.pkl'.format(
+            path, ('' if feature_selection else 'out'))
+    if read_pickle:
+        try:
+            with open(pickle_file_name, 'rb') as pickle_file:
+                tfs, labels = pickle.load(pickle_file)
+            logger.debug("Successfully read {}".format(pickle_file_name))
+        except FileNotFoundError as e:
+            logger.warning(str(e) + '\n Recomputing instead')
+            read_pickle = False
+
+    if not read_pickle:
+        token_dict = get_token_dict(path, read_pickle=True, write_pickle=True)
+
+        tf_idf = TfidfVectorizer(tokenizer=tokenize, min_df=0.01, max_df=.99,
+                                 stop_words='english')
+        tfs = csr_matrix(tf_idf.fit_transform(token_dict.values()))
+        labels = numpy.array([re.split(r'[/\\]', s)[-2]
+                              for s in list(token_dict.keys())])
+
+        logger.debug("TFS With{} Feature Selection Shape: Documents: {} "
+                     "Features: {}"
+                     .format(('' if feature_selection else 'out'), *tfs.shape))
+
+        if feature_selection:
+            clf = RandomForestClassifier(n_estimators=500, criterion='entropy',
+                                         n_jobs=-1, random_state=42)
+            clf.fit(tfs, labels)
+            feature_importance = numpy.array(clf.feature_importances_)
+            col_to_remove = feature_importance.argsort()[:-100][::-1]
+            tfs = csr_matrix(numpy.delete(tfs.toarray(), col_to_remove, 1))
+
+            logger.debug("TFS With{} Feature Selection Shape: Documents: {} "
+                         "Features: {}"
+                         .format(('' if feature_selection else 'out'),
+                                 *tfs.shape))
+
+        counts = Counter()
+        # Remove rows with mostly zeros
+        to_remove = []
+        for doc in range(tfs.shape[0]):
+            row = tfs.getrow(doc)
+            counts[row.nnz] += 1
+            if row.nnz <= 10:
+                to_remove.append(doc)
+
+        to_remove.reverse()
+        for doc in to_remove:
+            delete_row_csr(tfs, doc)
+            labels = numpy.delete(labels, doc)
+        logger.debug('Finished creating term frequency')
+
+    logger.debug("TFS With{} Feature Selection Shape: Documents: {} "
+                 "Features: {}"
+                 .format(('' if feature_selection else 'out'), *tfs.shape))
+    if write_pickle:
+        try:
+            with open(pickle_file_name, 'wb') as pickle_file:
+                pickle.dump((tfs, labels), pickle_file, pickle.HIGHEST_PROTOCOL)
+            logger.debug("Successfully wrote {}".format(pickle_file_name))
+        except FileNotFoundError as e:
+            logger.warning('Unable to write\n' + str(e))
+    logger.debug("End function")
+    return tfs, labels
+
+
+def get_token_dict(path, read_pickle=False, write_pickle=False):
+    """
+    Returns the dictionary of tokens
+
+    :param string path: the path to the articles
+    :param bool read_pickle: whether or not to read from a pickle file
+    :param bool write_pickle: whether or not to write to a pickle file
+
+    :return: the dictionary of tokens
+    :rtype: dict
+    """
+    logger.debug("Begin function")
+    pickle_file_name = 'pickles/{}/token_dict.pkl'.format(path)
+    if read_pickle:
+        try:
+            with open(pickle_file_name, 'rb') as pickle_file:
+                token_dictionary = pickle.load(pickle_file)
+            logger.debug("Successfully read {}".format(pickle_file_name))
+        except FileNotFoundError as e:
+            logger.warning(str(e) + '\n Recomputing instead')
+            read_pickle = False
+    if not read_pickle:
+        token_dictionary = {}
+        for subdir, dirs, files in os.walk(path):
+            for file in files:
+                file_path = '{}/{}'.format(subdir, file)
+                article = open(file_path, 'r', errors='replace')
+                article_text = article.read()
+                article.close()
+                article_text = article_text.lower()
+                article_text = expand_contractions(article_text)
+                article_text = article_text.translate(translator)
+                token_dictionary[file_path] = article_text
+    if write_pickle:
+        try:
+            with open(pickle_file_name, 'wb') as pickle_file:
+                pickle.dump(token_dictionary, pickle_file,
+                            pickle.HIGHEST_PROTOCOL)
+                logger.debug("Successfully wrote {}".format(pickle_file_name))
+        except FileNotFoundError as e:
+            logger.warning('Unable to write\n' + str(e))
+    logger.debug("End function")
+    return token_dictionary
 
 
 def setup_logger(logger_name):
@@ -515,80 +726,27 @@ if __name__ == '__main__':
     translator = str.maketrans('', '', string.punctuation)
     # Unwanted tags used for preprocessing with nltk to remove certain types
     # of words
-    unwanted_tags = {'IN', 'PRP', 'PRP$', 'RB', 'RBS', 'RBR', 'RP', 'WADV',
+    UNWANTED_TAGS = {'IN', 'PRP', 'PRP$', 'RB', 'RBS', 'RBR', 'RP', 'WADV',
                      'WD', 'WQ', 'WPRO', 'WPRO$'}
 
     contractions_re = re.compile('(%s)' % '|'.join(contractions.keys()))
-    path = 'testing'  # /alt.atheism'
-    token_dict = {}
-
-    for subdir, dirs, files in os.walk(path):
-        for file in files:
-            file_path = subdir + os.path.sep + file
-            article = open(file_path, 'r', errors='replace')
-            article_text = article.read()
-            article.close()
-            article_text = article_text.lower()
-            article_text = expand_contractions(article_text)
-            article_text = article_text.translate(translator)
-            token_dict[file_path] = article_text
+    PATH = '20news-18828'  # /alt.atheism'
 
     logger.debug('Finished reading files')
+    tfs_feat_sel, labels_feat_sel = get_term_frequency(PATH, read_pickle=True,
+                                                       write_pickle=False)
+    (
+        tfs_no_feat_sel, labels_no_feat_sel
+    ) = get_term_frequency(PATH, feature_selection=False, read_pickle=True,
+                           write_pickle=False)
 
-    tfidf_feat_sel = TfidfVectorizer(tokenizer=tokenize, stop_words='english',
-                                     min_df=0.01, max_df=.99, max_features=100)
-    tfs_feat_sel = csr_matrix(tfidf_feat_sel.fit_transform(token_dict.values()))
-    labels_feat_sel = [re.split(r'/|\\', s)[-2]
-                       for s in list(token_dict.keys())]
+    # Begin classifiers code
+    logger.debug("Begin classifiers code")
+    best_k = compare_k_value(tfs_feat_sel, labels_feat_sel)
 
-    tfidf_no_feat_sel = TfidfVectorizer(tokenizer=tokenize,
-                                        stop_words='english')
-    tfs_no_feat_sel = csr_matrix(
-            tfidf_no_feat_sel.fit_transform(token_dict.values()))
-    labels_no_feat_sel = [re.split(r'/|\\', s)[-2]
-                          for s in list(token_dict.keys())]
-    logger.debug('Finished creating term frequency')
-
-    logger.debug("TFS Feature Selection Shape: Documents: {} Features: {}"
-                 .format(*tfs_feat_sel.shape))
-    logger.debug("TFS Without Feature Selection Shape: Documents: {} "
-                 "Features: {}".format(*tfs_no_feat_sel.shape))
-
-    counts = Counter()
-    # Remove rows with mostly zeros
-    to_remove = []
-    for doc in range(tfs_feat_sel.shape[0]):
-        row = tfs_feat_sel.getrow(doc)
-        counts[row.nnz] += 1
-        if row.nnz < 20:
-            to_remove.append(doc)
-
-    to_remove.reverse()
-    for doc in to_remove:
-        delete_row_csr(tfs_feat_sel, doc)
-        del labels_feat_sel[doc]
-
-    counts = Counter()
-    # Remove rows with mostly zeros
-    to_remove = []
-    for doc in range(tfs_no_feat_sel.shape[0]):
-        row = tfs_no_feat_sel.getrow(doc)
-        counts[row.nnz] += 1
-        if row.nnz < 20:
-            to_remove.append(doc)
-
-    to_remove.reverse()
-    for doc in to_remove:
-        delete_row_csr(tfs_no_feat_sel, doc)
-        del labels_no_feat_sel[doc]
-
-    logger.debug("TFS Feature Selection Shape: Documents: {} Features: {}"
-                 .format(*tfs_feat_sel.shape))
-    logger.debug("TFS Without Feature Selection Shape: Documents: {} "
-                 "Features: {}".format(*tfs_no_feat_sel.shape))
-
+    logger.info("Best k value based on accuracy: {}".format(best_k))
     cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-    k_neighbors = KNeighborsClassifier(n_neighbors=4)
+    k_neighbors = KNeighborsClassifier(n_neighbors=best_k)
     decision_tree = DecisionTreeClassifier(random_state=42)
 
     scorers = {
@@ -598,8 +756,7 @@ if __name__ == '__main__':
             for l in set(labels_feat_sel)
         },
         **{
-            s: s for s in
-            ['accuracy', 'f1_micro', 'precision_micro', 'recall_micro']
+            s: s for s in ['accuracy', 'f1_micro']
         }
     }
     logger.info("With feature selection")
