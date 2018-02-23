@@ -478,6 +478,217 @@ def get_article_accuracy(y_true, y_pred, label):
     return correct / total
 
 
+def compare_feature_selection(k_value, term_freq_matrix_with, labels_with,
+                              term_freq_matrix_without, labels_without):
+    """
+    Compares the accuracy and f measures for KNN and Decision Tree
+    Classifiers with and without feature selection
+
+    :param int k_value: the k value to be used for KNN
+    :param csr_matrix term_freq_matrix_with: the term freq matrix with
+        feature selection used
+    :param list labels_with: the labels for term_term_freq_matrix_with
+    :param csr_matrix term_freq_matrix_without: the term freq matrix without
+        feature selection used
+    :param list labels_without: the labels for term_term_freq_matrix_without
+    """
+    k_neighbors = KNeighborsClassifier(n_neighbors=k_value)
+    decision_tree = DecisionTreeClassifier(random_state=42)
+    scorers = ['accuracy', 'f1_weighted']
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    logger.info("With feature selection")
+    scores_tree_with = dict(
+            cross_validate(decision_tree, term_freq_matrix_with, labels_with,
+                           cv=cv, n_jobs=-1, return_train_score=False,
+                           scoring=scorers))
+
+    scores_knn_with = dict(
+            cross_validate(k_neighbors, term_freq_matrix_with, labels_with,
+                           cv=cv, n_jobs=-1, return_train_score=False,
+                           scoring=scorers)
+    )
+
+    avg_acc_tree_with = numpy.average(scores_tree_with['test_accuracy'])
+    avg_f_tree_with = numpy.average(scores_tree_with['test_f1_weighted'])
+    avg_acc_knn_with = numpy.average(scores_knn_with['test_accuracy'])
+    avg_f_knn_with = numpy.average(scores_knn_with['test_f1_weighted'])
+
+    scores_tree_without = dict(
+            cross_validate(decision_tree, term_freq_matrix_without,
+                           labels_without,
+                           cv=cv, n_jobs=-1, return_train_score=False,
+                           scoring=scorers))
+
+    scores_knn_without = dict(
+            cross_validate(k_neighbors, term_freq_matrix_without,
+                           labels_without,
+                           cv=cv, n_jobs=-1, return_train_score=False,
+                           scoring=scorers)
+    )
+
+    avg_acc_tree_without = numpy.average(scores_tree_without['test_accuracy'])
+    avg_f_tree_without = numpy.average(scores_tree_without['test_f1_weighted'])
+    avg_acc_knn_without = numpy.average(scores_knn_without['test_accuracy'])
+    avg_f_knn_without = numpy.average(scores_knn_without['test_f1_weighted'])
+
+    logger.info('With Feature selection:\n'
+                'Decision Tree Classifier: average accuracy: {}, '
+                'average f-measure: {}'
+                .format(avg_acc_tree_with, avg_f_tree_with))
+    logger.info('With Feature selection:\n'
+                'K Nearest Neighbors Classifier: average accuracy: {}, '
+                'average f-measure: {}'
+                .format(avg_acc_knn_with, avg_f_knn_with))
+
+    logger.info('Without Feature selection:\n'
+                'Decision Tree Classifier: average accuracy: {}, '
+                'average f-measure: {}'
+                .format(avg_acc_tree_without, avg_f_tree_without))
+    logger.info('Without Feature selection:\n'
+                'K Nearest Neighbors Classifier: average accuracy: {}, '
+                'average f-measure: {}'
+                .format(avg_acc_knn_without, avg_f_knn_without))
+
+
+def compare_classifiers(k_value, term_freq_matrix, labels_with):
+    """
+    Compares the accuracy and f measures for KNN and Decision Tree
+    Classifiers and creates a histogram
+
+    :param int k_value: the k value to be used for KNN
+    :param csr_matrix term_freq_matrix: the term freq matrix with
+        feature selection used
+    :param list labels_with: the labels for term_term_freq_matrix_with
+    :param csr_matrix term_freq_matrix_without: the term freq matrix without
+        feature selection used
+    :param list labels_without: the labels for term_term_freq_matrix_without
+    """
+    k_neighbors = KNeighborsClassifier(n_neighbors=k_value)
+    decision_tree = DecisionTreeClassifier(random_state=42)
+    scorers = ['accuracy', 'f1_weighted']
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    logger.info("With feature selection")
+    scores_tree = dict(
+            cross_validate(decision_tree, term_freq_matrix, labels_with,
+                           cv=cv, n_jobs=-1, return_train_score=False,
+                           scoring=scorers))
+
+    scores_knn = dict(
+            cross_validate(k_neighbors, term_freq_matrix, labels_with,
+                           cv=cv, n_jobs=-1, return_train_score=False,
+                           scoring=scorers)
+    )
+
+    logger.info('Decision Tree Classifier:\n'
+                'accuracies: {}\nf-measures: {}'
+                .format(scores_tree['test_accuracy'],
+                        scores_tree['test_f1_weighted']))
+    logger.info('K Nearest Neighbors Classifier:\n'
+                'accuracies: {}\nf-measures: {}'
+                .format(scores_knn['test_accuracy'],
+                        scores_knn['test_f1_weighted']))
+
+    # Create histogram
+    accuracies = ([('Tree{}'.format(k), scores_tree['test_accuracy'][k])
+                   for k in range(5)]
+                  + [('KNN{}'.format(k), scores_knn['test_accuracy'][k])
+                     for k in range(5)])
+    f_values = ([('Tree{}'.format(k), scores_tree['test_f1_weighted'][k])
+                 for k in range(5)]
+                + [('KNN{}'.format(k), scores_knn['test_f1_weighted'][k])
+                   for k in range(5)])
+    accuracies.sort(key=lambda x: x[1], reverse=True)
+    f_values.sort(key=lambda x: x[1], reverse=True)
+
+    x_pos = numpy.arange(len(accuracies))
+    plt.bar(x_pos, [a[1] for a in accuracies], align='center', alpha=0.5)
+    plt.xticks(x_pos, [a[0] for a in accuracies])
+    plt.ylabel('Accuracy')
+    plt.title('Classifiers Accuracy Comparison Histogram')
+    plt.savefig('results/clf_comp_acc_histogram.png')
+    plt.close()
+
+    x_pos = numpy.arange(len(f_values))
+    plt.bar(x_pos, [f[1] for f in f_values], align='center', alpha=0.5)
+    plt.xticks(x_pos, [f[0] for f in f_values])
+    plt.ylabel('F Measure')
+    plt.title('Classifiers F-Measure Comparison Histogram')
+    plt.savefig('results/clf_comp_fmeasure_histogram.png')
+    plt.close()
+    logger.debug("End function")
+
+
+def compare_classifiers_articles(k_value, term_freq_matrix, labels):
+    """
+    Compares the accuracy and f measures for KNN and Decision Tree
+    Classifiers and creates a histogram
+
+    :param int k_value: the k value to be used for KNN
+    :param csr_matrix term_freq_matrix: the term freq matrix with
+        feature selection used
+    :param list labels: the labels for term_term_freq_matrix_with
+    :param csr_matrix term_freq_matrix_without: the term freq matrix without
+        feature selection used
+    :param list labels_without: the labels for term_term_freq_matrix_without
+    """
+    k_neighbors = KNeighborsClassifier(n_neighbors=k_value)
+    decision_tree = DecisionTreeClassifier(random_state=42)
+    scorers = {
+        'article_accuracy_{}'.format(l):
+            make_scorer(get_article_accuracy, label=l)
+        for l in set(labels_feat_sel)
+    }
+
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    logger.info("With feature selection")
+    scores_tree = dict(
+            cross_validate(decision_tree, term_freq_matrix, labels,
+                           cv=cv, n_jobs=-1, return_train_score=False,
+                           scoring=scorers))
+
+    scores_knn = dict(
+            cross_validate(k_neighbors, term_freq_matrix, labels,
+                           cv=cv, n_jobs=-1, return_train_score=False,
+                           scoring=scorers)
+    )
+
+    logger.info('Decision Tree Classifier accuracies:\n'
+                + '\n'.join(['{}: {}'.format(article,
+                                             scores_tree[
+                                                 'test_article_'
+                                                 'accuracy_{}'.format(article)])
+                             for article in set(labels)]))
+    logger.info('K Nearest Neighbors Classifier:\n'
+                + '\n'.join(['{}: {}'.format(article,
+                                             scores_knn[
+                                                 'test_article_'
+                                                 'accuracy_{}'.format(article)])
+                             for article in set(labels)]))
+
+    # Create histograms
+    for article in set(labels):
+        accuracies = (
+            [('Tree{}'.format(k),
+              scores_tree['test_article_accuracy_{}'.format(article)][k])
+             for k in range(5)]
+            + [('KNN{}'.format(k),
+                scores_knn['test_article_accuracy_{}'.format(article)][k])
+               for k in range(5)]
+        )
+
+        accuracies.sort(key=lambda x: x[1], reverse=True)
+
+        x_pos = numpy.arange(len(accuracies))
+        plt.bar(x_pos, [a[1] for a in accuracies], align='center', alpha=0.5)
+        plt.xticks(x_pos, [a[0] for a in accuracies])
+        plt.ylabel('Accuracy')
+        plt.title('Classifiers Article {} Comparison Histogram'.format(article))
+        plt.savefig('results/clf_acc_{}_histogram.png'.format(article))
+        plt.close()
+
+    logger.debug("End function")
+
+
 def compare_k_value(term_freq_matrix, labels):
     """
     Evaluates how the K impacts the overall accuracy and f-measure of
@@ -493,7 +704,7 @@ def compare_k_value(term_freq_matrix, labels):
     logger.debug("Begin function")
     cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 
-    scorers = ['accuracy', 'f1_micro']
+    scorers = ['accuracy', 'f1_weighted']
     scores = []
     for k in range(1, 20):
         logger.debug("Testing k value: {}".format(k))
@@ -507,7 +718,7 @@ def compare_k_value(term_freq_matrix, labels):
         scores.append(score)
 
     avg_acc_k = [numpy.average(score['test_accuracy']) for score in scores]
-    avg_f_k = [numpy.average(score['test_f1_micro']) for score in scores]
+    avg_f_k = [numpy.average(score['test_f1_weighted']) for score in scores]
     create_k_histogram(avg_acc_k, avg_f_k)
     accuracies = [(k + 1, avg_acc_k[k]) for k in range(len(avg_acc_k))]
     accuracies.sort(key=lambda x: x[1], reverse=True)
@@ -730,7 +941,7 @@ if __name__ == '__main__':
                      'WD', 'WQ', 'WPRO', 'WPRO$'}
 
     contractions_re = re.compile('(%s)' % '|'.join(contractions.keys()))
-    PATH = '20news-18828'  # /alt.atheism'
+    PATH = '20news-18828'
 
     logger.debug('Finished reading files')
     tfs_feat_sel, labels_feat_sel = get_term_frequency(PATH, read_pickle=True,
@@ -743,53 +954,11 @@ if __name__ == '__main__':
     # Begin classifiers code
     logger.debug("Begin classifiers code")
     best_k = compare_k_value(tfs_feat_sel, labels_feat_sel)
-
     logger.info("Best k value based on accuracy: {}".format(best_k))
-    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-    k_neighbors = KNeighborsClassifier(n_neighbors=best_k)
-    decision_tree = DecisionTreeClassifier(random_state=42)
 
-    scorers = {
-        **{
-            'article_accuracy_{}'.format(l):
-                make_scorer(get_article_accuracy, label=l)
-            for l in set(labels_feat_sel)
-        },
-        **{
-            s: s for s in ['accuracy', 'f1_micro']
-        }
-    }
-    logger.info("With feature selection")
-    scores_tree = dict(cross_validate(decision_tree, tfs_feat_sel,
-                                      labels_feat_sel, cv=cv, n_jobs=-1,
-                                      return_train_score=False,
-                                      scoring=scorers))
+    compare_feature_selection(best_k, tfs_feat_sel, labels_feat_sel,
+                              tfs_no_feat_sel, labels_no_feat_sel)
 
-    scores_neighbors = dict(cross_validate(k_neighbors, tfs_feat_sel,
-                                           labels_feat_sel, cv=cv, n_jobs=-1,
-                                           return_train_score=False,
-                                           scoring=scorers))
-    logger.info('Decision Tree Classifier'
-                + ''.join(['\n{}: {}'.format(k, v)
-                           for k, v in scores_tree.items()]))
-    logger.info('Nearest Neighbors Classifier'
-                + ''.join(['\n{}: {}'.format(k, v)
-                           for k, v in scores_neighbors.items()]))
+    compare_classifiers(best_k, tfs_feat_sel, labels_feat_sel)
 
-    logger.info("Without feature selection")
-    scores_tree2 = cross_validate(decision_tree, tfs_no_feat_sel,
-                                  labels_no_feat_sel, cv=cv, n_jobs=-1,
-                                  return_train_score=False,
-                                  scoring=scorers)
-
-    scores_neighbors2 = cross_validate(k_neighbors, tfs_no_feat_sel,
-                                       labels_no_feat_sel, cv=cv, n_jobs=-1,
-                                       return_train_score=False,
-                                       scoring=scorers)
-
-    logger.info('Decision Tree Classifier'
-                + ''.join(['\n{}: {}'.format(k, v)
-                           for k, v in scores_tree2.items()]))
-    logger.info('Nearest Neighbors Classifier'
-                + ''.join(['\n{}: {}'.format(k, v)
-                           for k, v in scores_neighbors2.items()]))
+    compare_classifiers_articles(best_k, tfs_feat_sel, labels_feat_sel)
