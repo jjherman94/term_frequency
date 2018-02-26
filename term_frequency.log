@@ -137,7 +137,6 @@ K Nearest Neighbors Classifier: average accuracy: 0.6229574769052798, average f-
 Decision Tree Classifier: average accuracy: 0.6157083032546342, average f-measure: 0.617023470862013
 02/23/18 12:07:54 AM - term_frequency - compare_feature_selection - INFO - Without Feature selection:
 K Nearest Neighbors Classifier: average accuracy: 0.7971364311807014, average f-measure: 0.7966237595222775
-02/23/18 12:07:54 AM - term_frequency - compare_classifiers - INFO - With feature selection
 02/23/18 12:08:03 AM - term_frequency - compare_classifiers - INFO - Decision Tree Classifier:
 accuracies: [0.52727273 0.55674518 0.56951154 0.55024181 0.54932615]
 f-measures: [0.52571416 0.55504262 0.57088713 0.55347973 0.55051427]
@@ -167,7 +166,7 @@ sci.med: [0.42528736 0.50574713 0.43678161 0.55172414 0.47674419]
 talk.politics.guns: [0.5862069  0.60344828 0.57758621 0.56896552 0.6173913 ]
 soc.religion.christian: [0.59259259 0.59259259 0.59701493 0.51492537 0.52985075]
 comp.graphics: [0.41025641 0.46153846 0.47435897 0.41025641 0.37662338]
-02/23/18 12:08:26 AM - term_frequency - compare_classifiers_articles - INFO - K Nearest Neighbors Classifier:
+02/23/18 12:08:26 AM - term_frequency - compare_classifiers_articles - INFO - K Nearest Neighbors Classifier Accuracies:
 misc.forsale: [0.38461538 0.48717949 0.47368421 0.52631579 0.47368421]
 rec.motorcycles: [0.68131868 0.67032967 0.68131868 0.7        0.67777778]
 talk.religion.misc: [0.31506849 0.4109589  0.39726027 0.45205479 0.38888889]

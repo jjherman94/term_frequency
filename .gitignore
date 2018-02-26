@@ -1,5 +1,5 @@
 /testing
 /20news-18828
 .idea
-#*.log
+*.log
 /results/hw1/

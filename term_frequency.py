@@ -14,9 +14,6 @@ import string
 import sys
 from collections import Counter
 
-# Needed to run on certain computer but not all, not sure on reason
-# import matplotlib
-# matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import nltk
 import numpy
@@ -559,15 +556,12 @@ def compare_classifiers(k_value, term_freq_matrix, labels_with):
     :param csr_matrix term_freq_matrix: the term freq matrix with
         feature selection used
     :param list labels_with: the labels for term_term_freq_matrix_with
-    :param csr_matrix term_freq_matrix_without: the term freq matrix without
-        feature selection used
-    :param list labels_without: the labels for term_term_freq_matrix_without
     """
     k_neighbors = KNeighborsClassifier(n_neighbors=k_value)
     decision_tree = DecisionTreeClassifier(random_state=42)
     scorers = ['accuracy', 'f1_weighted']
     cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-    logger.info("With feature selection")
+
     scores_tree = dict(
             cross_validate(decision_tree, term_freq_matrix, labels_with,
                            cv=cv, n_jobs=-1, return_train_score=False,
@@ -627,9 +621,6 @@ def compare_classifiers_articles(k_value, term_freq_matrix, labels):
     :param csr_matrix term_freq_matrix: the term freq matrix with
         feature selection used
     :param list labels: the labels for term_term_freq_matrix_with
-    :param csr_matrix term_freq_matrix_without: the term freq matrix without
-        feature selection used
-    :param list labels_without: the labels for term_term_freq_matrix_without
     """
     k_neighbors = KNeighborsClassifier(n_neighbors=k_value)
     decision_tree = DecisionTreeClassifier(random_state=42)
@@ -658,7 +649,7 @@ def compare_classifiers_articles(k_value, term_freq_matrix, labels):
                                                  'test_article_'
                                                  'accuracy_{}'.format(article)])
                              for article in set(labels)]))
-    logger.info('K Nearest Neighbors Classifier:\n'
+    logger.info('K Nearest Neighbors Classifier accuracies:\n'
                 + '\n'.join(['{}: {}'.format(article,
                                              scores_knn[
                                                  'test_article_'
@@ -787,7 +778,7 @@ def get_term_frequency(path, feature_selection=True, read_pickle=False,
             read_pickle = False
 
     if not read_pickle:
-        token_dict = get_token_dict(path, read_pickle=True, write_pickle=True)
+        token_dict = get_token_dict(path, read_pickle=True, write_pickle=False)
 
         tf_idf = TfidfVectorizer(tokenizer=tokenize, min_df=0.01, max_df=.99,
                                  stop_words='english')
