@@ -2,7 +2,7 @@
 """
     Joshua Herman
     CS 6001
-    Homework 2
+    Homework 3
 """
 
 import itertools
@@ -23,7 +23,7 @@ from scipy.sparse.csr import csr_matrix
 from scipy.stats import linregress
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics import make_scorer
+from sklearn.metrics import accuracy_score, make_scorer
 from sklearn.metrics.pairwise import pairwise_distances
 from sklearn.model_selection import StratifiedKFold, cross_validate
 from sklearn.neighbors import KNeighborsClassifier
@@ -407,11 +407,11 @@ def rank_articles(euc_list, cos_list, jac_list, token_dict):
     logger.debug("End function")
 
 
-def get_similarities(term_freq_matrix, num_features):
+def get_similarities(term_freq_matrix, num_features=None):
     """
     Returns the pairwise similarity matrices
 
-    :param csr_matrix term_freq_matrix: the term frequence matrix
+    :param csr_matrix term_freq_matrix: the term frequency matrix
     :param int num_features: the number of features(terms) to use
 
     :return: the pairwise similarity matrices, in order of euclidean, cosine,
@@ -426,6 +426,158 @@ def get_similarities(term_freq_matrix, num_features):
     jac_sim = pairwise_distances(term_freq_matrix[:, :num_features].toarray(),
                                  metric=gen_jaccard_similarity, n_jobs=-1)
     return euc_sim, cos_sim, jac_sim
+
+
+def get_center_distances(term_freq_matrix, cluster_centers, dist_metric):
+    """
+    Returns the distances from each row in the term_freq_matrix with
+    each row in the term_freq_matrix_centers. Rows are article and columns
+    are cluster numbers
+
+    :param csr_matrix term_freq_matrix: the term frequency matrix
+    :param csr_matrix cluster_centers: the centers of the term
+        frequency matrix clusters
+    :param str dist_metric: the distance metric to use (`euclidean`,
+        `cosine`, or `jaccard`)
+
+    :return: the pairwise distances matrices
+    :rtype: numpy.ndarray
+    """
+    logger.debug('Begin Calculating Distances')
+    if dist_metric == 'euclidean':
+        dist = pairwise_distances(term_freq_matrix, cluster_centers,
+                                  metric='euclidean', n_jobs=-1)
+    elif dist_metric == 'cosine':
+        dist = pairwise_distances(term_freq_matrix, cluster_centers,
+                                  metric='cosine', n_jobs=-1)
+    elif dist_metric == 'jaccard':
+        dist = 1 - pairwise_distances(term_freq_matrix.toarray(),
+                                      cluster_centers.toarray(),
+                                      metric=gen_jaccard_similarity, n_jobs=-1)
+    else:
+        raise ValueError("Invalid distance metric of {}. ".format(dist_metric)
+                         + "Choices are: (euclidean, cosine, jaccard)")
+    logger.debug('Finish Calculating Distances')
+
+    return dist
+
+
+def get_cluster_centers(term_freq_matrix, cluster_assignments, num_clusters):
+    """
+    Calculates the new centers of each cluster
+
+    :param csr_matrix term_freq_matrix: the term frequency matrix
+    :param numpy.ndarray cluster_assignments: the cluster assignments of each
+        article
+    :param int num_clusters: the number of article clusters
+
+    :return: the centers of each cluster
+    :rtype: csr_matrix
+    """
+    centers = csr_matrix(
+            numpy.vstack([
+                term_freq_matrix[cluster_assignments == cluster, :].mean(0)
+                for cluster in range(num_clusters)
+            ])
+    )
+    return centers
+
+
+def get_sse(term_freq_matrix, cluster_centers, cluster_assignments, dist_metric,
+            num_clusters):
+    """
+    Calculates the sum of squares error
+
+    :param csr_matrix term_freq_matrix: the term frequency matrix
+    :param csr_matrix cluster_centers: the centers of the term
+        frequency matrix clusters
+    :param numpy.ndarray cluster_assignments: the cluster assignments of each
+        article
+    :param str dist_metric: the distance metric to use (`euclidean`,
+        `cosine`, or `jaccard`)
+    :param int num_clusters: the number of article clusters
+
+    :return: the sum of squares error
+    :rtype: float
+    """
+    sse = 0.0
+    for i in range(num_clusters):
+        cluster_i = term_freq_matrix[cluster_assignments == i, :]
+        distance = get_center_distances(cluster_i, cluster_centers.getrow(i),
+                                        dist_metric)
+        sse += (distance ** 2).sum()
+    return sse
+
+
+def get_cluster_accuracy(cluster_assignments, article_labels, num_clusters):
+    """
+    Calculates the cluster accuracy
+
+    :param numpy.ndarray cluster_assignments: the cluster assignments of each
+        article
+    :param numpy.ndarray article_labels: the true article labels
+    :param int num_clusters: the number of article clusters
+
+    :return: the accuracy of the clusters
+    :rtype: float
+    """
+    logger.debug("Begin Cluster Accuracy")
+    # Get the votes per cluster
+    cluster_votes = [Counter() for _ in range(num_clusters)]
+    for cluster, true_label in zip(cluster_assignments, article_labels):
+        cluster_votes[cluster][true_label] += 1
+    # Get the winning votes
+    winning_votes = [votes.most_common(1)[0] for votes in cluster_votes]
+
+    pred_article_labels = numpy.array([winning_votes[cluster]
+                                       for cluster in cluster_assignments])
+    logger.debug("Finish Cluster Accuracy")
+    return accuracy_score(article_labels, pred_article_labels)
+
+
+def run_kmeans(term_freq_matrix, num_clusters, dist_metric,
+               term_cond='centroids', num_iter=None):
+    """
+    Performs k means clustering on the term frequency matrix
+
+    :param csr_matrix term_freq_matrix: the term frequency matrix
+    :param int num_clusters: the number of article clusters
+    :param str dist_metric: the distance metric to use (`euclidean`,
+        `cosine`, or `jaccard`)
+    :param str term_cond: the termination condition (`centroids`, `sse`, `iter`)
+
+        - `centroids`: terminate when there is no change in centroid position
+        - `sse`: terminate when the SSE value increases in the next iteration
+        - `iter`: terminate when the maximum preset value of iterations is
+          complete
+    :param int num_iter: the number of iterations to terminate at if
+        ``term_cond`` is set to `iter`
+
+    :return: the cluster assignments, number of iterations taken to complete
+    :rtype: numpy.ndarray, int
+    """
+    # Randomly select initial clusters
+    centroids = term_freq_matrix[
+                (
+                    numpy.random.choice(term_freq_matrix.shape[0], num_clusters,
+                                        False)
+                ), :]
+    iteration = 0
+    terminate = False
+    assigned_clusters = None
+    while not terminate:
+        iteration += 1
+        prev_centroid = centroids
+        distances = get_center_distances(term_freq_matrix, centroids,
+                                         dist_metric)
+        assigned_clusters = numpy.array([dist.argmin() for dist in distances])
+        centroids = get_cluster_centers(term_freq_matrix, assigned_clusters,
+                                        num_clusters)
+        if iteration % 10 == 0:
+            logger.debug("Finished iteration {}".format(iteration))
+        if (centroids != prev_centroid).nnz == 0:
+            terminate = True
+    return assigned_clusters, iteration
 
 
 def get_similarity_lists(euc_sim_matrix, cos_sim_matrix, jac_sim_matrix,
@@ -484,11 +636,13 @@ def compare_feature_selection(k_value, term_freq_matrix_with, labels_with,
     :param int k_value: the k value to be used for KNN
     :param csr_matrix term_freq_matrix_with: the term freq matrix with
         feature selection used
-    :param list labels_with: the labels for term_term_freq_matrix_with
+    :param numpy.ndarray labels_with: the labels for term_term_freq_matrix_with
     :param csr_matrix term_freq_matrix_without: the term freq matrix without
         feature selection used
-    :param list labels_without: the labels for term_term_freq_matrix_without
+    :param numpy.ndarray labels_without: the labels for
+        term_term_freq_matrix_without
     """
+    logger.debug("Begin function")
     k_neighbors = KNeighborsClassifier(n_neighbors=k_value)
     decision_tree = DecisionTreeClassifier(random_state=42)
     scorers = ['accuracy', 'f1_weighted']
@@ -545,6 +699,7 @@ def compare_feature_selection(k_value, term_freq_matrix_with, labels_with,
                 'K Nearest Neighbors Classifier: average accuracy: {}, '
                 'average f-measure: {}'
                 .format(avg_acc_knn_without, avg_f_knn_without))
+    logger.debug("End function")
 
 
 def compare_classifiers(k_value, term_freq_matrix, labels_with):
@@ -555,8 +710,9 @@ def compare_classifiers(k_value, term_freq_matrix, labels_with):
     :param int k_value: the k value to be used for KNN
     :param csr_matrix term_freq_matrix: the term freq matrix with
         feature selection used
-    :param list labels_with: the labels for term_term_freq_matrix_with
+    :param numpy.ndarray labels_with: the labels for term_term_freq_matrix_with
     """
+    logger.debug("Begin function")
     k_neighbors = KNeighborsClassifier(n_neighbors=k_value)
     decision_tree = DecisionTreeClassifier(random_state=42)
     scorers = ['accuracy', 'f1_weighted']
@@ -620,8 +776,9 @@ def compare_classifiers_articles(k_value, term_freq_matrix, labels):
     :param int k_value: the k value to be used for KNN
     :param csr_matrix term_freq_matrix: the term freq matrix with
         feature selection used
-    :param list labels: the labels for term_term_freq_matrix_with
+    :param numpy.ndarray labels: the labels for term_term_freq_matrix_with
     """
+    logger.debug("Begin function")
     k_neighbors = KNeighborsClassifier(n_neighbors=k_value)
     decision_tree = DecisionTreeClassifier(random_state=42)
     scorers = {
@@ -631,7 +788,7 @@ def compare_classifiers_articles(k_value, term_freq_matrix, labels):
     }
 
     cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-    logger.info("With feature selection")
+
     scores_tree = dict(
             cross_validate(decision_tree, term_freq_matrix, labels,
                            cv=cv, n_jobs=-1, return_train_score=False,
@@ -659,12 +816,12 @@ def compare_classifiers_articles(k_value, term_freq_matrix, labels):
     # Create histograms
     for article in set(labels):
         accuracies = (
-            [('Tree{}'.format(k),
-              scores_tree['test_article_accuracy_{}'.format(article)][k])
-             for k in range(5)]
-            + [('KNN{}'.format(k),
-                scores_knn['test_article_accuracy_{}'.format(article)][k])
-               for k in range(5)]
+                [('Tree{}'.format(k),
+                  scores_tree['test_article_accuracy_{}'.format(article)][k])
+                 for k in range(5)]
+                + [('KNN{}'.format(k),
+                    scores_knn['test_article_accuracy_{}'.format(article)][k])
+                   for k in range(5)]
         )
 
         accuracies.sort(key=lambda x: x[1], reverse=True)
@@ -768,6 +925,8 @@ def get_term_frequency(path, feature_selection=True, read_pickle=False,
     logger.debug("Begin function")
     pickle_file_name = 'pickles/{}/term_freq-with{}_feat_select.pkl'.format(
             path, ('' if feature_selection else 'out'))
+    tfs = None
+    labels = None
     if read_pickle:
         try:
             with open(pickle_file_name, 'rb') as pickle_file:
@@ -845,6 +1004,7 @@ def get_token_dict(path, read_pickle=False, write_pickle=False):
     """
     logger.debug("Begin function")
     pickle_file_name = 'pickles/{}/token_dict.pkl'.format(path)
+    token_dictionary = None
     if read_pickle:
         try:
             with open(pickle_file_name, 'rb') as pickle_file:
@@ -919,37 +1079,36 @@ def setup_logger(logger_name):
 logger = setup_logger('term_frequency')
 
 if __name__ == '__main__':
-    nltk.download('punkt')
-    nltk.download('averaged_perceptron_tagger')
+    try:
+        numpy.random.seed(42)
+        nltk.download('punkt')
+        nltk.download('averaged_perceptron_tagger')
 
-    logger.debug('Program started')
-    stemmer = PorterStemmer()
+        logger.debug('Program started')
 
-    translator = str.maketrans('', '', string.punctuation)
-    # Unwanted tags used for preprocessing with nltk to remove certain types
-    # of words
-    UNWANTED_TAGS = {'IN', 'PRP', 'PRP$', 'RB', 'RBS', 'RBR', 'RP', 'WADV',
-                     'WD', 'WQ', 'WPRO', 'WPRO$'}
+        stemmer = PorterStemmer()
 
-    contractions_re = re.compile('(%s)' % '|'.join(contractions.keys()))
-    PATH = '20news-18828'
+        translator = str.maketrans('', '', string.punctuation)
+        # Unwanted tags used for preprocessing with nltk to remove certain types
+        # of words
+        UNWANTED_TAGS = {'IN', 'PRP', 'PRP$', 'RB', 'RBS', 'RBR', 'RP', 'WADV',
+                         'WD', 'WQ', 'WPRO', 'WPRO$'}
 
-    logger.debug('Finished reading files')
-    tfs_feat_sel, labels_feat_sel = get_term_frequency(PATH, read_pickle=True,
-                                                       write_pickle=False)
-    (
-        tfs_no_feat_sel, labels_no_feat_sel
-    ) = get_term_frequency(PATH, feature_selection=False, read_pickle=True,
-                           write_pickle=False)
+        contractions_re = re.compile('(%s)' % '|'.join(contractions.keys()))
+        PATH = 'testing'  # '20news-18828'
 
-    # Begin classifiers code
-    logger.debug("Begin classifiers code")
-    best_k = compare_k_value(tfs_feat_sel, labels_feat_sel)
-    logger.info("Best k value based on accuracy: {}".format(best_k))
-
-    compare_feature_selection(best_k, tfs_feat_sel, labels_feat_sel,
-                              tfs_no_feat_sel, labels_no_feat_sel)
-
-    compare_classifiers(best_k, tfs_feat_sel, labels_feat_sel)
-
-    compare_classifiers_articles(best_k, tfs_feat_sel, labels_feat_sel)
+        tfs_feat_sel, labels_feat_sel = get_term_frequency(PATH,
+                                                           read_pickle=True,
+                                                           write_pickle=False)
+        (
+            tfs_no_feat_sel, labels_no_feat_sel
+        ) = get_term_frequency(PATH, feature_selection=False, read_pickle=True,
+                               write_pickle=False)
+        num_article_categories = len(set(labels_feat_sel))
+        # Begin k means code
+        resulting_clusters, iterations = run_kmeans(tfs_feat_sel,
+                                                    num_article_categories,
+                                                    'euclidean')
+        logger.info('Number of iterations to complete: {}'.format(iterations))
+    except Exception as exception:
+        logger.exception(exception)
