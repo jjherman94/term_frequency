@@ -261,29 +261,22 @@ def get_cluster_centers(term_freq_matrix, cluster_assignments, num_clusters):
     return centers
 
 
-def get_sse(term_freq_matrix, cluster_centers, cluster_assignments, dist_metric,
-            num_clusters):
+def get_sse(cluster_assignments, distances):
     """
     Calculates the sum of squares error
 
-    :param csr_matrix term_freq_matrix: the term frequency matrix
-    :param csr_matrix cluster_centers: the centers of the term
-        frequency matrix clusters
     :param numpy.ndarray cluster_assignments: the cluster assignments of each
         article
-    :param str dist_metric: the distance metric to use (`euclidean`,
-        `cosine`, or `jaccard`)
-    :param int num_clusters: the number of article clusters
+    :param numpy.ndarray distances: the distances of each point from each
+        centroid
 
     :return: the sum of squares error
     :rtype: float
     """
     sse = 0.0
-    for i in range(num_clusters):
-        cluster_i = term_freq_matrix[cluster_assignments == i, :]
-        distance = get_center_distances(cluster_i, cluster_centers.getrow(i),
-                                        dist_metric)
-        sse += (distance ** 2).sum()
+    for i in range(len(cluster_assignments)):
+        sse += distances[i][cluster_assignments[i]] ** 2
+
     return sse
 
 
@@ -336,6 +329,7 @@ def run_kmeans(term_freq_matrix, num_clusters, dist_metric,
         assignments, centroids
     :rtype: int, numpy.ndarray, csr_matrix
     """
+    logger.debug('Begin function')
     # Randomly select initial clusters
     centroids = term_freq_matrix[
                 (
@@ -345,16 +339,24 @@ def run_kmeans(term_freq_matrix, num_clusters, dist_metric,
 
     iteration = 0
     assigned_clusters = None
-
+    sse = None
     terminate_func = None
     if term_cond == 'centroids':
         def terminate_func():
             return (centroids != prev_centroid).nnz == 0
     elif term_cond == 'sse':
         def terminate_func():
-            return prev_sse < sse
+            if prev_sse is not None and prev_sse == sse:
+                # Terminate if clusters stayed the same since there won't be
+                # any changes
+                return (centroids != prev_centroid).nnz == 0
+            return prev_sse is not None and prev_sse < sse
     elif term_cond == 'iter':
         def terminate_func():
+            # Terminate if clusters stayed the same since there won't be
+            # any changes
+            if (centroids != prev_centroid).nnz == 0:
+                return True
             return iteration >= num_iter
 
     while iteration == 0 or not terminate_func():
@@ -364,17 +366,17 @@ def run_kmeans(term_freq_matrix, num_clusters, dist_metric,
         assigned_clusters = numpy.array([dist.argmin() for dist in distances])
         if term_cond == 'sse':
             prev_sse = sse
-            sse = get_sse(term_freq_matrix, centroids, assigned_clusters,
-                          dist_metric, num_clusters)
-        elif term_cond == 'centroids':
-            prev_centroid = centroids
+            sse = get_sse(assigned_clusters, distances)
+
+        # elif term_cond == 'centroids':
+        prev_centroid = centroids
 
         # Set the new centroids
         centroids = get_cluster_centers(term_freq_matrix, assigned_clusters,
                                         num_clusters)
         if iteration % 10 == 0:
             logger.debug("Finished iteration {}".format(iteration))
-
+    logger.debug('End function')
     return iteration, assigned_clusters, centroids
 
 
@@ -564,7 +566,7 @@ if __name__ == '__main__':
                          'WD', 'WQ', 'WPRO', 'WPRO$'}
 
         contractions_re = re.compile('(%s)' % '|'.join(contractions.keys()))
-        PATH = 'testing'  # '20news-18828'
+        PATH = '20news-18828'
 
         tfs_feat_sel, labels_feat_sel = get_term_frequency(PATH,
                                                            read_pickle=True,
@@ -585,8 +587,10 @@ if __name__ == '__main__':
                 ) = run_kmeans(tfs_feat_sel, k, metric, term_condition)
                 run_time = datetime.now() - start_time
 
-                resulting_sse = get_sse(tfs_feat_sel, result_centroids,
-                                        result_clusters, metric, k)
+                resulting_sse = get_sse(result_clusters,
+                                        get_center_distances(tfs_feat_sel,
+                                                             result_centroids,
+                                                             metric))
                 resulting_accuracies = get_cluster_accuracy(result_clusters,
                                                             labels_feat_sel, k)
                 logger.info('With Feature Selection\n'
