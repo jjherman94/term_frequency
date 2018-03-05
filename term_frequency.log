@@ -1,0 +1,147 @@
+03/04/18 06:05:49 AM - term_frequency - <module> - DEBUG - Program started
+03/04/18 06:05:49 AM - term_frequency - get_term_frequency - DEBUG - Begin function
+03/04/18 06:05:49 AM - term_frequency - get_term_frequency - DEBUG - Successfully read pickles/20news-18828/term_freq-with_feat_select.pkl
+03/04/18 06:05:49 AM - term_frequency - get_term_frequency - DEBUG - TFS With Feature Selection Shape: Documents: 9317 Features: 100
+03/04/18 06:05:49 AM - term_frequency - get_term_frequency - DEBUG - End function
+03/04/18 06:05:49 AM - term_frequency - get_term_frequency - DEBUG - Begin function
+03/04/18 06:05:49 AM - term_frequency - get_term_frequency - DEBUG - Successfully read pickles/20news-18828/term_freq-without_feat_select.pkl
+03/04/18 06:05:49 AM - term_frequency - get_term_frequency - DEBUG - TFS Without Feature Selection Shape: Documents: 17820 Features: 1458
+03/04/18 06:05:49 AM - term_frequency - get_term_frequency - DEBUG - End function
+03/04/18 06:05:49 AM - term_frequency - <module> - DEBUG - starting with feature selection centroids euclidean
+03/04/18 06:05:49 AM - term_frequency - run_kmeans - DEBUG - Begin function
+03/04/18 06:06:02 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 10
+03/04/18 06:06:14 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 20
+03/04/18 06:06:27 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 30
+03/04/18 06:06:40 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 40
+03/04/18 06:06:41 AM - term_frequency - run_kmeans - DEBUG - End function
+03/04/18 06:06:42 AM - term_frequency - get_cluster_accuracy - DEBUG - Begin Cluster Accuracy
+03/04/18 06:06:42 AM - term_frequency - get_cluster_accuracy - DEBUG - Finish Cluster Accuracy
+03/04/18 06:06:42 AM - term_frequency - <module> - INFO - With Feature Selection
+Distance metric: euclidean; Termination Condition: centroids; Iterations: 41; SSE: 1298.9224235989534; Acc: 0.36342170226467746; Run Time: 0:00:52.041717
+03/04/18 06:06:42 AM - term_frequency - <module> - DEBUG - starting with feature selection centroids cosine
+03/04/18 06:06:42 AM - term_frequency - run_kmeans - DEBUG - Begin function
+03/04/18 06:06:55 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 10
+03/04/18 06:07:07 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 20
+03/04/18 06:07:14 AM - term_frequency - run_kmeans - DEBUG - End function
+03/04/18 06:07:15 AM - term_frequency - get_cluster_accuracy - DEBUG - Begin Cluster Accuracy
+03/04/18 06:07:15 AM - term_frequency - get_cluster_accuracy - DEBUG - Finish Cluster Accuracy
+03/04/18 06:07:15 AM - term_frequency - <module> - INFO - With Feature Selection
+Distance metric: cosine; Termination Condition: centroids; Iterations: 25; SSE: 1639.504278993848; Acc: 0.4049586776859504; Run Time: 0:00:31.571876
+03/04/18 06:07:15 AM - term_frequency - <module> - DEBUG - starting with feature selection centroids jaccard
+03/04/18 06:07:15 AM - term_frequency - run_kmeans - DEBUG - Begin function
+03/04/18 06:07:32 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 10
+03/04/18 06:07:49 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 20
+03/04/18 06:08:06 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 30
+03/04/18 06:08:23 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 40
+03/04/18 06:08:40 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 50
+03/04/18 06:08:56 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 60
+03/04/18 06:09:12 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 70
+03/04/18 06:09:29 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 80
+03/04/18 06:09:46 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 90
+03/04/18 06:10:05 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 100
+03/04/18 06:10:22 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 110
+03/04/18 06:10:40 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 120
+03/04/18 06:10:56 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 130
+03/04/18 06:10:56 AM - term_frequency - run_kmeans - DEBUG - End function
+03/04/18 06:10:58 AM - term_frequency - get_cluster_accuracy - DEBUG - Begin Cluster Accuracy
+03/04/18 06:10:58 AM - term_frequency - get_cluster_accuracy - DEBUG - Finish Cluster Accuracy
+03/04/18 06:10:58 AM - term_frequency - <module> - INFO - With Feature Selection
+Distance metric: jaccard; Termination Condition: centroids; Iterations: 130; SSE: 5323.424487065827; Acc: 0.4740796393688956; Run Time: 0:03:41.059762
+03/04/18 06:10:58 AM - term_frequency - <module> - DEBUG - starting with feature selection sse euclidean
+03/04/18 06:10:58 AM - term_frequency - run_kmeans - DEBUG - Begin function
+03/04/18 06:11:10 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 10
+03/04/18 06:11:23 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 20
+03/04/18 06:11:35 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 30
+03/04/18 06:11:48 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 40
+03/04/18 06:11:55 AM - term_frequency - run_kmeans - DEBUG - End function
+03/04/18 06:11:56 AM - term_frequency - get_cluster_accuracy - DEBUG - Begin Cluster Accuracy
+03/04/18 06:11:56 AM - term_frequency - get_cluster_accuracy - DEBUG - Finish Cluster Accuracy
+03/04/18 06:11:56 AM - term_frequency - <module> - INFO - With Feature Selection
+Distance metric: euclidean; Termination Condition: sse; Iterations: 46; SSE: 1311.463756814886; Acc: 0.34936138241923365; Run Time: 0:00:57.630385
+03/04/18 06:11:56 AM - term_frequency - <module> - DEBUG - starting with feature selection sse cosine
+03/04/18 06:11:56 AM - term_frequency - run_kmeans - DEBUG - Begin function
+03/04/18 06:12:09 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 10
+03/04/18 06:12:13 AM - term_frequency - run_kmeans - DEBUG - End function
+03/04/18 06:12:14 AM - term_frequency - get_cluster_accuracy - DEBUG - Begin Cluster Accuracy
+03/04/18 06:12:14 AM - term_frequency - get_cluster_accuracy - DEBUG - Finish Cluster Accuracy
+03/04/18 06:12:14 AM - term_frequency - <module> - INFO - With Feature Selection
+Distance metric: cosine; Termination Condition: sse; Iterations: 13; SSE: 1611.211519073962; Acc: 0.439519158527423; Run Time: 0:00:16.064001
+03/04/18 06:12:14 AM - term_frequency - <module> - DEBUG - starting with feature selection sse jaccard
+03/04/18 06:12:14 AM - term_frequency - run_kmeans - DEBUG - Begin function
+03/04/18 06:12:30 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 10
+03/04/18 06:12:43 AM - term_frequency - run_kmeans - DEBUG - End function
+03/04/18 06:12:45 AM - term_frequency - get_cluster_accuracy - DEBUG - Begin Cluster Accuracy
+03/04/18 06:12:45 AM - term_frequency - get_cluster_accuracy - DEBUG - Finish Cluster Accuracy
+03/04/18 06:12:45 AM - term_frequency - <module> - INFO - With Feature Selection
+Distance metric: jaccard; Termination Condition: sse; Iterations: 18; SSE: 5349.051680923345; Acc: 0.47461629279811096; Run Time: 0:00:29.534010
+03/04/18 06:12:45 AM - term_frequency - <module> - DEBUG - starting with feature selection iter euclidean
+03/04/18 06:12:45 AM - term_frequency - run_kmeans - DEBUG - Begin function
+03/04/18 06:12:57 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 10
+03/04/18 06:13:09 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 20
+03/04/18 06:13:22 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 30
+03/04/18 06:13:29 AM - term_frequency - run_kmeans - DEBUG - End function
+03/04/18 06:13:30 AM - term_frequency - get_cluster_accuracy - DEBUG - Begin Cluster Accuracy
+03/04/18 06:13:30 AM - term_frequency - get_cluster_accuracy - DEBUG - Finish Cluster Accuracy
+03/04/18 06:13:30 AM - term_frequency - <module> - INFO - With Feature Selection
+Distance metric: euclidean; Termination Condition: iter; Iterations: 36; SSE: 1300.7469745906396; Acc: 0.3461414618439412; Run Time: 0:00:44.113723
+03/04/18 06:13:30 AM - term_frequency - <module> - DEBUG - starting with feature selection iter cosine
+03/04/18 06:13:30 AM - term_frequency - run_kmeans - DEBUG - Begin function
+03/04/18 06:13:43 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 10
+03/04/18 06:13:55 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 20
+03/04/18 06:14:07 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 30
+03/04/18 06:14:20 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 40
+03/04/18 06:14:32 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 50
+03/04/18 06:14:44 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 60
+03/04/18 06:14:57 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 70
+03/04/18 06:15:00 AM - term_frequency - run_kmeans - DEBUG - End function
+03/04/18 06:15:02 AM - term_frequency - get_cluster_accuracy - DEBUG - Begin Cluster Accuracy
+03/04/18 06:15:02 AM - term_frequency - get_cluster_accuracy - DEBUG - Finish Cluster Accuracy
+03/04/18 06:15:02 AM - term_frequency - <module> - INFO - With Feature Selection
+Distance metric: cosine; Termination Condition: iter; Iterations: 73; SSE: 1657.3064239992473; Acc: 0.3986261672212085; Run Time: 0:01:30.024590
+03/04/18 06:15:02 AM - term_frequency - <module> - DEBUG - starting with feature selection iter jaccard
+03/04/18 06:15:02 AM - term_frequency - run_kmeans - DEBUG - Begin function
+03/04/18 06:15:18 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 10
+03/04/18 06:15:35 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 20
+03/04/18 06:15:51 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 30
+03/04/18 06:16:08 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 40
+03/04/18 06:16:25 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 50
+03/04/18 06:16:28 AM - term_frequency - run_kmeans - DEBUG - End function
+03/04/18 06:16:30 AM - term_frequency - get_cluster_accuracy - DEBUG - Begin Cluster Accuracy
+03/04/18 06:16:30 AM - term_frequency - get_cluster_accuracy - DEBUG - Finish Cluster Accuracy
+03/04/18 06:16:30 AM - term_frequency - <module> - INFO - With Feature Selection
+Distance metric: jaccard; Termination Condition: iter; Iterations: 52; SSE: 5324.182656776318; Acc: 0.4823441021788129; Run Time: 0:01:26.617469
+03/04/18 06:16:30 AM - term_frequency - <module> - DEBUG - starting without feature selection centroids euclidean
+03/04/18 06:16:30 AM - term_frequency - run_kmeans - DEBUG - Begin function
+03/04/18 06:16:44 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 10
+03/04/18 06:16:58 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 20
+03/04/18 06:17:12 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 30
+03/04/18 06:17:26 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 40
+03/04/18 06:17:40 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 50
+03/04/18 06:17:55 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 60
+03/04/18 06:18:03 AM - term_frequency - run_kmeans - DEBUG - End function
+03/04/18 06:18:03 AM - term_frequency - get_cluster_accuracy - DEBUG - Begin Cluster Accuracy
+03/04/18 06:18:03 AM - term_frequency - get_cluster_accuracy - DEBUG - Finish Cluster Accuracy
+03/04/18 06:18:03 AM - term_frequency - <module> - INFO - Without Feature Selection
+Distance metric: euclidean; Termination Condition: centroids; Iterations: 66; Acc: 0.42048260381593716; Run Time: 0:01:33.665002
+03/04/18 06:18:03 AM - term_frequency - <module> - DEBUG - starting without feature selection centroids cosine
+03/04/18 06:18:03 AM - term_frequency - run_kmeans - DEBUG - Begin function
+03/04/18 06:18:18 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 10
+03/04/18 06:18:32 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 20
+03/04/18 06:18:47 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 30
+03/04/18 06:19:01 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 40
+03/04/18 06:19:15 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 50
+03/04/18 06:19:30 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 60
+03/04/18 06:19:34 AM - term_frequency - run_kmeans - DEBUG - End function
+03/04/18 06:19:34 AM - term_frequency - get_cluster_accuracy - DEBUG - Begin Cluster Accuracy
+03/04/18 06:19:34 AM - term_frequency - get_cluster_accuracy - DEBUG - Finish Cluster Accuracy
+03/04/18 06:19:34 AM - term_frequency - <module> - INFO - Without Feature Selection
+Distance metric: cosine; Termination Condition: centroids; Iterations: 63; Acc: 0.48484848484848486; Run Time: 0:01:30.867865
+03/04/18 06:19:34 AM - term_frequency - <module> - DEBUG - starting without feature selection centroids jaccard
+03/04/18 06:19:34 AM - term_frequency - run_kmeans - DEBUG - Begin function
+03/04/18 06:20:19 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 10
+03/04/18 06:21:04 AM - term_frequency - run_kmeans - DEBUG - Finished iteration 20
+03/04/18 06:21:31 AM - term_frequency - run_kmeans - DEBUG - End function
+03/04/18 06:21:31 AM - term_frequency - get_cluster_accuracy - DEBUG - Begin Cluster Accuracy
+03/04/18 06:21:31 AM - term_frequency - get_cluster_accuracy - DEBUG - Finish Cluster Accuracy
+03/04/18 06:21:31 AM - term_frequency - <module> - INFO - Without Feature Selection
+Distance metric: jaccard; Termination Condition: centroids; Iterations: 26; Acc: 0.494668911335578; Run Time: 0:01:56.433346
