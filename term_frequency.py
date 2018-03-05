@@ -176,10 +176,9 @@ def gen_jaccard_similarity(x, y):
     """
     Performs the generalized jaccard similarity
     """
-    n = d = 0
-    for a, b in zip(x, y):
-        n += min(a, b)
-        d += max(a, b)
+    n = numpy.minimum(x, y).sum()
+    d = numpy.maximum(x, y).sum()
+
     if d == 0:
         # Return 1.0 since d==0 if and only if both arrays are all zeros
         return 1.0
@@ -368,7 +367,6 @@ def run_kmeans(term_freq_matrix, num_clusters, dist_metric,
             prev_sse = sse
             sse = get_sse(assigned_clusters, distances)
 
-        # elif term_cond == 'centroids':
         prev_centroid = centroids
 
         # Set the new centroids
@@ -577,10 +575,10 @@ if __name__ == '__main__':
                                write_pickle=False)
         k = len(set(labels_feat_sel))
         # Begin k means code
-        resulting_clusters = dict()
-        iterations = dict()
         for term_condition in ['centroids', 'sse', 'iter']:
             for metric in ['euclidean', 'cosine', 'jaccard']:
+                logger.debug('starting with feature selection {} {}'.format(
+                        term_condition, metric))
                 start_time = datetime.now()
                 (
                     iterations, result_clusters, result_centroids
@@ -602,6 +600,8 @@ if __name__ == '__main__':
 
         for term_condition in ['centroids']:
             for metric in ['euclidean', 'cosine', 'jaccard']:
+                logger.debug('starting without feature selection {} {}'.format(
+                        term_condition, metric))
                 start_time = datetime.now()
                 (
                     iterations, result_clusters, result_centroids
